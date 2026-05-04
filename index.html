@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>მოცულობის კალკულაციისა და ვალიდაციის ფლოუ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'default',
+            securityLevel: 'loose',
+            themeVariables: {
+                fontSize: '14px',
+                fontFamily: 'arial, sans-serif'
+            }
+        });
+    </script>
+    <style>
+        body { 
+            background-color: #f8fafc; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .mermaid-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        /* Custom scrollbar for better appearance */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        
+        <div class="bg-white p-6 rounded-t-xl shadow-sm border-b border-slate-200">
+            <h1 class="text-2xl font-bold text-slate-800 text-center">კალათის მოცულობის კონტროლი და ავტომატური ლოქერი</h1>
+            <p class="text-slate-500 mt-2 text-center text-sm">დიაგრამა ასახავს პროდუქტების მოცულობის გამოთვლის (H×W×D), ფრონტენდზე UI ლიმიტების დაწესების და ბექენდის მიერ უჯრის ზომის ავტომატური შერჩევის პროცესს.</p>
+        </div>
+
+        <div class="mermaid-container mt-4 border border-slate-200">
+            <div class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    
+                    actor C as 👤 მომხმარებელი
+                    participant F as 🛒 Shop App (Frontend)
+                    participant B as ⚙️ Backend API
+                    participant DB as 🗄️ Database
+                    participant P as 📦 Picker App
+                    participant L as 🗃️ eLocker System
+
+                    %% ეტაპი 1: კალათის დინამიური კონტროლი UI-ში
+                    rect rgb(240, 248, 255)
+                    Note over C, B: ეტაპი 1: კალათის დინამიური ვალიდაცია (Frontend UI)
+                    C->>F: ამატებს პროდუქტს კალათაში
+                    F->>B: GET /products (ითხოვს პროდუქტის H, W, D, Weight)
+                    B-->>F: აბრუნებს პარამეტრებს
+                    F->>F: ითვლის მიმდინარე კალათის ჯამურ მოცულობას
+                    
+                    alt მოცულობა ლიმიტის ფარგლებშია
+                        F->>C: აჩვენებს მწვანე/ლურჯ პროგრეს ბარს (დარჩა X ლოკაცია)
+                    else კალათა გაივსო (მოცულობის ლიმიტი ამოიწურა)
+                        F->>C: პროგრეს ბარი წითლდება
+                        F->>C: ბლოკავს კალათაში სხვა პროდუქტის დამატების ღილაკს
+                    end
+                    end
+
+                    %% ეტაპი 2: ბექენდის კალკულაცია და eLocker API
+                    rect rgb(255, 250, 205)
+                    Note over C, L: ეტაპი 2: Checkout და სისტემური მოცულობის გადათვლა
+                    C->>F: Click: შეკვეთის გაფორმება
+                    F->>B: POST /orders (Locker ID)
+                    B->>DB: ამოწმებს პროდუქტების ზუსტ ზომებს ბაზაში
+                    B->>B: ფორმულით ითვლის ჯამურ მოცულობას და ირჩევს უჯრის ზომას (1, 2 ან 3)
+                    B->>L: POST /api/orders (გადასცემს ლოქერის ID-ს და აუცილებელი უჯრის ზომას/რაოდენობას)
+                    L-->>B: Success 
+                    B-->>F: შეკვეთა წარმატებით გაფორმდა
+                    end
+
+                    %% ეტაპი 3: ფიქინგი ავტომატიზირებული ლოგიკით
+                    rect rgb(240, 255, 240)
+                    Note over P, L: ეტაპი 3: ფიქინგი - სისტემის მიერ განსაზღვრული უჯრა
+                    P->>B: ითხოვს შესაგროვებელ შეკვეთას
+                    B-->>P: უბრუნებს შეკვეთას და ანიჭებს: "მოცულობა L, უჯრა: 3-იანი"
+                    P->>L: ფიქერი მიდის ლოქერთან, ირჩევს შეკვეთას ეკრანზე
+                    Note over P, L: eLocker-ის ეკრანზე ფიქერს აღარ უწევს ზომის არჩევა!
+                    L->>L: ლოქერი ავტომატურად ხსნის იმ ზომის/რაოდენობის უჯრას, რაც ბექენდმა გადასცა
+                    P->>L: ათავსებს ამანათს და ხურავს კარს
+                    end
+            </div>
+        </div>
+
+        <div class="mt-8 space-y-6">
+            
+            <!-- Backend Tasks -->
+            <div class="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2 border-b pb-2">
+                    <span class="text-blue-600 text-xl">⚙️</span> Backend-ის დეტალური დეველოპერული სამუშაოები
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">1. მონაცემთა მოდელირება და ინტეგრაცია</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>Product Schema განახლება:</strong> ბაზაში პროდუქტის მოდელს უნდა დაემატოს ველები: <code>height</code>, <code>width</code>, <code>depth</code>, <code>weight</code>.</li>
+                            <li><strong>ERP/1C სინქრონიზაცია:</strong> არსებული იმპორტის სკრიპტების (Cron/Listener) მოდიფიკაცია, რათა ERP-დან წამოიღოს და განაახლოს ზომის პარამეტრები.</li>
+                            <li><strong>Locker Entity / Warehouse:</strong> ლოქერების სისტემაში აღრიცხვა ვირტუალურ საწყობებად (<code>warehouseId</code>), რომ სწორად იმუშაოს მარაგების კონტროლმა.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">2. მოცულობის ალგორითმი და ვალიდაცია</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>მოცულობის კალკულაციის სერვისი:</strong> ლოგიკა, რომელიც ითვლის კალათის ჯამურ მოცულობას <code>Σ(qty * (H*W*D))</code> და ითვალისწინებს ტარების ფაქტორს.</li>
+                            <li><strong>Locker Box Mapping:</strong> კალკულატორის შედეგის დაკავშირება ლოქერის უჯრების ტიპებთან (მაგ: < 20L = 1 უჯრა, < 40L = 2 უჯრა).</li>
+                            <li><strong>Checkout Middleware:</strong> <code>POST /orders</code> ენდფოინთზე მკაცრი ვალიდაციის დამატება. თუ მოცულობა სცდება მაქსიმალურ ლიმიტს, დააბრუნოს HTTP 4xx (მაგ: "Locker Capacity Exceeded").</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">3. eLocker API ინტეგრაცია</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>HTTP Client:</strong> eLocker-ის API-სთან საკომუნიკაციო მოდულის დაწერა (Bearer token/Auth მართვა).</li>
+                            <li><strong>Create Order Flow:</strong> შეკვეთის წარმატებით დადასტურებისას, ვენდორისთვის <code>POST</code> მოთხოვნის გაგზავნა (გადაეცემა მომხმარებლის ტელეფონი, შიდა Order ID და დათვლილი <strong>Box Size</strong>).</li>
+                            <li><strong>Cancel Order Flow:</strong> თუ მომხმარებელი ან ადმინი აუქმებს შეკვეთას, გაიგზავნოს მოთხოვნა ლოქერიდან ამოშლის შესახებ.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">4. Webhook & ნოტიფიკაციები</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>Webhook Listener ენდფოინთი:</strong> (მაგ. <code>POST /api/webhook/elocker</code>) ვენდორიდან სტატუსების მისაღებად (Deposited, Collected).</li>
+                            <li><strong>სტატუსების მართვა:</strong> მიღებული Webhook-ების საფუძველზე სისტემაში შეკვეთის სტატუსების შეცვლა და ლოგირება.</li>
+                            <li><strong>Event Trigger:</strong> "Deposited" სტატუსის მიღებისას შიდა Notification Service-ისთვის ივენთის გაშვება მომხმარებლისთვის OTP კოდის გასაგზავნად.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Frontend Tasks -->
+            <div class="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                <h3 class="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2 border-b pb-2">
+                    <span class="text-orange-500 text-xl">💻</span> Frontend-ის დეტალური დეველოპერული სამუშაოები
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">1. UI / UX კალათის მართვა (Cart)</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>Volume State Calculator:</strong> Redux/Zustand-ში სელექტორის დამატება, რომელიც ლოკალურად ითვლის კალათის მოცულობას პროდუქტის ზომებზე დაყრდნობით.</li>
+                            <li><strong>Progress Bar კომპონენტი:</strong> კალათაში ახალი ვიზუალური ინდიკატორის შექმნა, რომელიც რეალურ დროში აჩვენებს დაკავებულ ადგილს (მაგ. <code>w-[80%] bg-orange-400</code>).</li>
+                            <li><strong>Warning/Error ინდიკაცია:</strong> როცა ლიმიტი უახლოვდება მაქსიმუმს ზოლის ფერის შეცვლა, ხოლო შევსებისას წითლად ჩვენება და საინფორმაციო ტექსტის გამოტანა.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">2. შეზღუდვები და ვალიდაცია ფრონტზე</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>ღილაკების ბლოკირება:</strong> <code>&lt;ProductCard&gt;</code> და <code>&lt;CartItem&gt;</code> დონეზე "+" ღილაკის და <code>AddToCart</code> მოქმედების <code>disabled</code> სტატუსში გადაყვანა, თუ პროდუქტის დამატება აჭარბებს ჯამურ მოცულობას.</li>
+                            <li><strong>Toast / Notification:</strong> მომხმარებლის ინფორმირება ამომხტარი შეტყობინებით (მაგ: "პროდუქტი ვერ დაემატება, ლოქერის მოცულობა ამოწურულია").</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">3. Checkout პროცესის მოდიფიკაცია</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>Locker Delivery Option:</strong> Delivery ტიპებში "Locker"-ის დამატება (Standard Delivery-ს და Pickup-ის გვერდით).</li>
+                            <li><strong>Locker Selector:</strong> Google Maps ინტეგრაცია ან Dropdown, საიდანაც მომხმარებელი ირჩევს კონკრეტულ ლოქერს (გადაეცემა <code>lockerId</code> ბექენდს).</li>
+                            <li><strong>Payload Update:</strong> Checkout მოთხოვნაში ახალი ველების გატანის უზრუნველყოფა.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-700 mb-2">4. User Profile & Order History</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-1.5">
+                            <li><strong>Active Orders:</strong> შეკვეთების ისტორიაში Locker ტიპის შეკვეთებისთვის სპეციალური ვიზუალის შექმნა (მაგ. "ელოდება ლოქერში").</li>
+                            <li><strong>OTP / QR კოდის ჩვენება:</strong> თუ სტატუსი არის "Locker_Deposited", მომხმარებლის ეკრანზე გამოჩნდეს დიდი შრიფტით გასატანი PIN კოდი და ლოქერის ინსტრუქცია.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
