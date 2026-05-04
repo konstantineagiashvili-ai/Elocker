@@ -7,140 +7,152 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        
+        // Mermaid კონფიგურაცია პროფესიონალური იერსახისთვის და ტექსტის გადაფარვის თავიდან ასაცილებლად
         mermaid.initialize({ 
             startOnLoad: true, 
             theme: 'base',
             themeVariables: {
-                primaryColor: '#e0f2fe',
+                primaryColor: '#ffffff',
                 primaryTextColor: '#1e293b',
-                primaryBorderColor: '#7dd3fc',
+                primaryBorderColor: '#cbd5e1',
                 lineColor: '#64748b',
                 secondaryColor: '#f8fafc',
                 tertiaryColor: '#f1f5f9',
-                fontSize: '15px',
-                fontFamily: 'Segoe UI, system-ui, sans-serif',
                 noteBkgColor: '#fef9c3',
                 noteBorderColor: '#fde047',
-                actorBkg: '#ffffff',
-                actorBorder: '#94a3b8'
+                actorBkg: '#f8fafc',
+                actorBorder: '#94a3b8',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontSize: '14px'
             },
             sequence: {
-                messageMargin: 40,
-                boxMargin: 20,
-                actorMargin: 50
+                wrap: true, // ავტომატურად გადააქვს გრძელი ტექსტი ახალ ხაზზე
+                messageMargin: 60, // გაზრდილი მანძილი ხაზებს შორის
+                boxMargin: 30,
+                actorMargin: 60,
+                width: 150 // აქტორების სიგანე
             }
         });
     </script>
     <style>
-        body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .mermaid-container { overflow-x: auto; background: white; border-radius: 0.75rem; padding: 2rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .mermaid-container { overflow-x: auto; background: white; border-radius: 0.75rem; padding: 2.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06); }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
         <div class="bg-white p-8 rounded-t-xl shadow-sm border-b border-slate-200">
-            <div class="flex items-center justify-center gap-3 mb-2">
-                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded">v2.0 (Optimized)</span>
+            <div class="flex items-center justify-between mb-2">
+                <span class="bg-slate-800 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Architecture Document</span>
+                <span class="text-sm font-medium text-slate-500">API Integration Level</span>
             </div>
-            <h1 class="text-3xl font-bold text-slate-800 text-center">Click & Collect: ოპერაციული მოდელი</h1>
-            <p class="text-slate-500 mt-3 text-center text-md max-w-2xl mx-auto">
-                სისტემური არქიტექტურა, რომელიც უზრუნველყოფს ოვერბუქინგის პრევენციას, დროის სლოტების პარალელურ მართვას და მომხმარებლის უწყვეტ გამოცდილებას.
+            <h1 class="text-3xl font-bold text-slate-800 mt-4">Click & Collect: API სინქრონიზაცია & ფლოუ</h1>
+            <p class="text-slate-600 mt-3 text-md max-w-3xl leading-relaxed">
+                დეტალური მიმდევრობის დიაგრამა დეველოპერებისთვის. ასახავს Backend სერვისების, Picker App-ის, eLocker API-სა და 
+                ოვერბუქინგის (Overbooking) პრევენციის შიდა ლოგიკას.
             </p>
         </div>
 
-        <!-- Diagram -->
+        <!-- Diagram Section -->
         <div class="mermaid-container border border-slate-200 border-t-0 rounded-b-xl">
             <div class="mermaid flex justify-center">
                 sequenceDiagram
                     autonumber
                     
-                    actor C as 👤 მომხმარებელი
+                    actor C as 👤 Customer
                     participant F as 🛒 Shop App
-                    participant B as ⚙️ Backend (Ori Nabiji)
+                    participant B as ⚙️ Backend API
+                    participant DB as 🗄️ Slot Database
                     participant P as 📱 Picker App
-                    participant V as 🗃️ eLocker (Vendor)
-                    participant SMS as ✉️ SMS Provider
+                    participant V as 🗃️ eLocker API
+                    participant SMS as ✉️ SMS Gateway
 
                     %% --- ფაზა 1 ---
-                    rect rgb(240, 248, 255)
-                    Note over C, SMS: ფაზა 1: ჭკვიანი ჯავშანი და Checkout
-                    C->>F: ირჩევს ლოქერს და სასურველ დროს
-                    F->>B: ამოწმებს პარალელურ დატვირთვას (Concurrency)
-                    Note over B: სისტემა ითვალისწინებს მინუს 2 ბუფერულ უჯრას (Overbooking-ის პრევენცია)
-                    B-->>F: ადასტურებს, რომ სლოტი ხელმისაწვდომია
+                    rect rgb(244, 244, 255)
+                    Note over C, SMS: ეტაპი 1: Checkout & Overbooking Validation
+                    C->>F: ირჩევს ლოკაციას და დროს
+                    F->>B: GET /lockers/availability<br/>(type: clickAndCollect)
+                    B->>DB: Check logic: (Total Free - 2) > 0
+                    B-->>F: Response: [Available Slots Array]
                     C->>F: ასრულებს გადახდას
-                    F->>B: ინახება შეკვეთა და დროის ჯავშანი (Slot Reserved)
+                    F->>B: POST /orders
+                    B->>DB: Reserve Slot (+30 min Buffer)
+                    B-->>F: 201 Created
                     end
 
                     %% --- ფაზა 2 ---
-                    rect rgb(255, 253, 240)
-                    Note over C, SMS: ფაზა 2: ფიქინგი და ლოქერში განთავსება
-                    P->>B: ფიქერი იღებს Click & Collect შეკვეთას
-                    P->>P: აგროვებს პროდუქტებს ფიზიკურად
-                    Note over P: ფიქერი აპლიკაციაში უთითებს ზუსტად რამდენი და რა ტიპის უჯრა სჭირდება (მშრალი/მაცივარი)
-                    P->>B: აგზავნის ლოქერის საბოლოო კონფიგურაციას
-                    B->>V: უქმნის შეკვეთას eLocker-ის სისტემაში მოთხოვნილი უჯრებით
-                    V-->>B: აბრუნებს უნიკალურ PIN კოდს
-                    P->>V: ფიქერი ათავსებს ამანათებს ლოქერში და კეტავს კარს
+                    rect rgb(255, 252, 235)
+                    Note over C, SMS: ეტაპი 2: Picker App & Vendor API Sync
+                    P->>B: GET /orders/picking
+                    P->>P: ფიზიკური შეგროვება
+                    P->>B: POST /orders/{id}/allocate<br/>Payload: [{type: FRIDGE, count: 1}]
+                    
+                    Note right of B: ბექენდი ითვლის ზუსტ კონფიგურაციას
+                    B->>V: POST /api/orders<br/>(Create Vendor Order w/ Compartments)
+                    V-->>B: 200 OK (Returns Generated PIN)
+                    B-->>P: 200 OK (Allocation Success)
+                    P->>V: ათავსებს ამანათს ლოქერში
                     end
 
                     %% --- ფაზა 3 ---
-                    rect rgb(240, 255, 240)
-                    Note over C, SMS: ფაზა 3: ნოტიფიკაცია და წარმატებული გატანა
-                    V->>B: Webhook: ამანათი მოთავსებულია (Deposited)
-                    B->>SMS: იძლევა SMS გაგზავნის ბრძანებას PIN კოდით
-                    SMS-->>C: "თქვენი ამანათი მზადაა. PIN: XXXX. დრო გაქვთ 15:00-მდე"
+                    rect rgb(240, 255, 244)
+                    Note over C, SMS: ეტაპი 3: Webhooks & Collection
+                    V->>B: POST /webhook/elocker<br/>Status: Deposited
+                    B->>SMS: POST /send-sms<br/>(Send Order PIN to Customer)
+                    SMS-->>C: SMS: "კოდი: XXXX"
                     
-                    C->>V: მიდის ლოქერთან და შეჰყავს SMS-ში მიღებული PIN
-                    V->>V: ეკრანზე დასტურდება კოდი და იღება უჯრები
-                    V->>B: Webhook: ამანათი გატანილია (Collected)
-                    Note over B: ბექენდი მყისიერად ათავისუფლებს დროის სლოტს და ხურავს შეკვეთას
+                    C->>V: ლოქერში შეჰყავს PIN
+                    V->>V: ამოწმებს და აღებს უჯრებს
+                    V->>B: POST /webhook/elocker<br/>Status: Collected
+                    B->>DB: DB Update: Release Slot (მყისიერად)
+                    B->>B: Order Status -> Completed
                     end
 
                     %% --- ფაზა 4 ---
-                    rect rgb(255, 240, 245)
-                    Note over C, SMS: ფაზა 4: დაგვიანების მართვა (Grace Period Extension)
-                    Note over B: სლოტის გასვლისას სისტემა ამოწმებს არის თუ არა შემდეგი 30 წთ თავისუფალი
-                    B->>SMS: "დრო იწურება. გაგიხანგრძლივდათ დამატებით 30 წუთით."
-                    SMS-->>C: იღებს შეხსენებას (Reminder)
-                    Note over B, V: თუ ლოქერი სრულად დაჯავშნილია, შეკვეთა უქმდება (Service Collect) ფიქერის მიერ ამოსაღებად
+                    rect rgb(255, 245, 245)
+                    Note over C, SMS: ეტაპი 4: Cron Job / Timeout / No-Show ლოგიკა
+                    loop Background Task (Every X mins)
+                        B->>DB: Query: Expired "Deposited" Orders
+                        
+                        alt Next 30min Slot is FREE
+                            B->>DB: Update: Extend Time (+30 min)
+                            B->>SMS: POST /send-sms<br/>(Reminder & Extended Time)
+                        else Next Slot is RESERVED (Full)
+                            B->>V: POST /api/orders/cancel
+                            B->>B: Order Status -> Service Collect
+                            Note right of B: ფიქერმა უნდა ამოიღოს ამანათი,<br/>რომ სხვამ ისარგებლოს.
+                        end
+                    end
                     end
             </div>
         </div>
 
-        <!-- Business Rules -->
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <span class="text-blue-600 text-xl">🛡️</span>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">Overbooking დაცვა</h3>
-                <p class="text-sm text-slate-600">
-                    გადახდის მომენტში სისტემა ინახავს 2 ბუფერულ უჯრას ხელშეუხებლად. ეს უზრუნველყოფს იმას, რომ თუ ფიქერს 1-ის ნაცვლად მოულოდნელად 3 უჯრა დასჭირდა, ლოქერში ადგილი გარანტირებული იყოს.
+        <!-- Technical Notes -->
+        <div class="mt-6 flex flex-col md:flex-row gap-4">
+            <div class="flex-1 bg-white p-5 rounded-lg border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
+                <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wide">API Payload - Allocation</h4>
+                <p class="text-xs text-slate-600 font-mono bg-slate-50 p-2 rounded mt-2 border border-slate-100">
+                    POST /orders/{id}/allocate<br/>
+                    {<br/>
+                    &nbsp;&nbsp;"allocations": [<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;{ "type": "DRY", "count": 1 },<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;{ "type": "FRIDGE", "count": 2 }<br/>
+                    &nbsp;&nbsp;]<br/>
+                    }
                 </p>
             </div>
             
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                    <span class="text-amber-600 text-xl">⏱️</span>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">პარალელური სლოტები</h3>
-                <p class="text-sm text-slate-600">
-                    ლოქერის რესურსი იმართება პარალელურად. მაგალითად, 14:00-14:30 პერიოდში შესაძლებელია დაიტევს 10-ზე მეტი შეკვეთა ერთდროულად, რაც ზრდის ლოქერის გამტარუნარიანობას.
-                </p>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                    <span class="text-emerald-600 text-xl">📲</span>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">მომხმარებლის გამოცდილება</h3>
-                <p class="text-sm text-slate-600">
-                    თუ კლიენტი აგვიანებს, ვუგზავნით SMS-ს 30 წუთიანი "Grace Period"-ით (იმ შემთხვევაში თუ ლოქერში არის ადგილი მომდევნო სლოტზე), რაც თავიდან აგვარიდებს კლიენტის უკმაყოფილებას.
+            <div class="flex-1 bg-white p-5 rounded-lg border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
+                <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wide">Webhook Security</h4>
+                <p class="text-xs text-slate-600 mt-2">
+                    Vendor API-დან წამოსული Webhook-ების ავთენტიფიკაციისთვის, Endpoint <code class="bg-slate-100 px-1 rounded text-red-500">/webhook/elocker</code> 
+                    მკაცრად უნდა ამოწმებდეს IP მისამართს ან იყენებდეს Bearer Token-ს, რომ თავიდან ავიცილოთ ყალბი სტატუსის აფდეითები.
                 </p>
             </div>
         </div>
