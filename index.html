@@ -3,159 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Click & Collect - სრული ტექნიკური ფლოუ</title>
+    <title>ლოქერის შეკვეთის სრული ციკლი (განახლებული)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Panzoom Library -->
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Noto Sans Georgian', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        .canvas-bg {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+        
+        .grab-cursor {
+            cursor: grab;
+        }
+        .grab-cursor:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="text-slate-800 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Header -->
+        <div class="bg-blue-600 px-6 py-5 border-b border-blue-700">
+            <h1 class="text-2xl font-semibold text-white">ლოქერის შეკვეთის სრული ციკლი</h1>
+            <p class="text-blue-100 text-sm mt-1"></p>
+        </div>
+
+        <!-- Diagram Section (Canvas) -->
+        <div class="relative w-full h-[700px] overflow-hidden canvas-bg border-b border-slate-100">
+            
+            <!-- Zoom Controls -->
+            <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/90 backdrop-blur-sm shadow-md border border-slate-200 rounded-lg p-1">
+                <button id="zoom-in" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded transition" title="გადიდება">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </button>
+                <div class="w-full h-px bg-slate-200"></div>
+                <button id="zoom-out" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded transition" title="დაპატარავება">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+                </button>
+                <div class="w-full h-px bg-slate-200"></div>
+                <button id="reset-zoom" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded transition" title="ცენტრში დაბრუნება">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+            </div>
+
+            <!-- Draggable Area -->
+            <div id="panzoom-element" class="w-full h-full flex justify-center items-start pt-8 grab-cursor">
+                <!-- Mermaid container -->
+                <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor C as მომხმარებელი
+    participant API as CatalogAPI
+    participant B as ბანკი
+    actor P as ფიქერი
+    participant L as eLocker
+
+    C ->> API: გააგზავნის ჩექაუთის მოთხოვნას (თაიმსლოტით)
+    API ->> L: გადაამოწმებს ლოქერების რაოდენობას
+    L -->> API: დააბრუნებს ხელმისაწვდომ სტატუსს
+
+    alt რაოდენობა < 3
+        API -->> C: აჩვენებს შეცდომას (მიუწვდომელია)
+    else რაოდენობა >= 3
+        API ->> L: დაჯავშნის +2 ბუფერულ ლოქერს (Pre-book)
+        API ->> B: მოითხოვს თანხის ჩამოჭრას
+        B -->> API: დაადასტურებს ტრანზაქციას
+        API -->> C: დაუდასტურებს შეკვეთას
+        
+        P ->> API: გააგზავნის ზუსტ რაოდენობას, ზომას და ტიპს
+        API ->> L: განაახლებს ჯავშანს და მოითხოვს კოდებს
+        L -->> API: დააბრუნებს გენერირებულ OTP/QR-ს
+        API -) C: გაუგზავნის SMS-ს ჩვენი პროვაიდერით
+        
+        Note over API: SQS ტაიმერი: თაიმსლოტის დასრულება + 30 წთ
+        
+        alt დროული გატანა (Happy Path)
+            C ->> L: გამოიყენებს SMS-ის კოდს/QR-ს
+            L -->> C: გააღებს უჯრებს
+            L -) API: გამოაგზავნის Collected ვებჰუკს
+            API ->> API: დახურავს შეკვეთას (წარმატებული)
+        else ამოიწურა დედლაინი (Timeout)
+            Note over API: SQS ამჩნევს ვადაგასულ შეკვეთას
+            API ->> L: გააგზავნის ჯავშნის გაუქმების ბრძანებას
+            L -->> API: დაადასტურებს კოდების დეაქტივაციას
+            API -) P: გაუგზავნის დაცლის დავალებას
+            API ->> B: გააგზავნის Refund მოთხოვნას
+        end
+    end
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanations Section -->
+        <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-white">
+            
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-blue-800 border-b pb-2">გადაწყვეტილებების მოკლე ახსნა</h2>
+                <ul class="space-y-4 text-sm leading-relaxed text-slate-600">
+                    <li class="flex items-start">
+                        <span class="inline-block bg-blue-100 text-blue-700 rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5 whitespace-nowrap">Pre-booking (+2)</span>
+                        <span>იმისათვის რომ თავიდან ავირიდოთ ოვერბუქინგი ჩექაუთის დროს, API აკეთებს <strong class="text-slate-800">+2 ლოქერის დროებით დაჯავშნას</strong>. მოგვიანებით (მე-9 ნაბიჯი), როცა ფიქერი რეალურ რაოდენობას/ტიპს მიუთითებს, სისტემა აკორექტირებს ამ ჯავშანს ვენდორთან.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block bg-blue-100 text-blue-700 rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5 whitespace-nowrap">ჩვენი SMS (ნაბიჯი 12)</span>
+                        <span>QR ლინკს და OTP-ს გენერირებას უკეთებს eLocker, თუმცა უბრუნებს ჩვენს API-ს. საბოლოო SMS-ს მომხმარებელთან ჩვენი სისტემა აგზავნის ჩვენივე პროვაიდერით .</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block bg-blue-100 text-blue-700 rounded px-2 py-1 text-xs font-bold mr-3 mt-0.5 whitespace-nowrap">დედლაინის ლოგიკა</span>
+                        <span>ტაიმერი არ ირთვება შეგროვების მომენტიდან. ის ითვლის დროს <strong>მომხმარებლის მიერ არჩეული თაიმსლოტის დასრულებიდან + ბიზნესის მიერ დადგენილი 30 (ან მეტი) წუთი</strong>. მხოლოდ ამის შემდეგ ითვლება შეკვეთა ვადაგასულად.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-blue-800 border-b pb-2">შესაძლო გაუმჯობესებები</h2>
+                <ul class="space-y-4 text-sm leading-relaxed text-slate-600">
+                    <li class="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                        <strong class="block text-slate-800 mb-1">1. SMS Delivery Confirmation</strong>
+                        ვინაიდან SMS-ს ჩვენ ვაგზავნით, ლოგიკაში შეიძლება დაემატოს SMS პროვაიდერისგან გაგზავნის სტატუსის მიღება, რათა დარწმუნებულები ვიყოთ რომ კლიენტს ნამდვილად მიუვიდა გასაღები კოდი.
+                    </li>
+                    <li class="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                        <strong class="block text-slate-800 mb-1">2. Race-Condition-ის დაზღვევა დედლაინზე</strong>
+                        SQS-ის მიერ დაფიქსირებულ ვადაგასულ დროზე (მე-17 ნაბიჯი), გაუქმების გაშვებამდე, სასურველია მყისიერი ორმაგი შემოწმება eLocker-ის API-სთან, რათა არ მოხდეს გაუქმება ზუსტად იმ წამს, როცა კლიენტი ლოქერთან დგას.
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Mermaid.js Initialization and Panzoom Setup -->
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
         
-        // Mermaid კონფიგურაცია პროფესიონალური იერსახისთვის და ტექსტის გადაფარვის თავიდან ასაცილებლად
         mermaid.initialize({ 
-            startOnLoad: true, 
+            startOnLoad: false,
             theme: 'base',
             themeVariables: {
-                primaryColor: '#ffffff',
+                primaryColor: '#e0f2fe',
                 primaryTextColor: '#1e293b',
-                primaryBorderColor: '#cbd5e1',
-                lineColor: '#64748b',
+                primaryBorderColor: '#0ea5e9',
+                lineColor: '#334155',
                 secondaryColor: '#f8fafc',
-                tertiaryColor: '#f1f5f9',
-                noteBkgColor: '#fef9c3',
-                noteBorderColor: '#fde047',
-                actorBkg: '#f8fafc',
-                actorBorder: '#94a3b8',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontSize: '14px'
+                tertiaryColor: '#fff',
+                noteBkgColor: '#fef08a',
+                noteTextColor: '#422006'
             },
             sequence: {
-                wrap: true, // ავტომატურად გადააქვს გრძელი ტექსტი ახალ ხაზზე
-                messageMargin: 60, // გაზრდილი მანძილი ხაზებს შორის
-                boxMargin: 30,
-                actorMargin: 60,
-                width: 150 // აქტორების სიგანე
+                actorMargin: 50,
+                messageMargin: 40
             }
         });
+
+        async function initDiagram() {
+            await mermaid.run({
+                querySelector: '.mermaid'
+            });
+
+            const elem = document.getElementById('panzoom-element');
+            const instance = panzoom(elem, {
+                maxZoom: 5,
+                minZoom: 0.4,
+                bounds: true,
+                boundsPadding: 0.1,
+                smoothScroll: false 
+            });
+
+            const zoomInBtn = document.getElementById('zoom-in');
+            const zoomOutBtn = document.getElementById('zoom-out');
+            const resetBtn = document.getElementById('reset-zoom');
+            const container = document.getElementById('panzoom-element');
+
+            zoomInBtn.addEventListener('click', () => {
+                const rect = container.getBoundingClientRect();
+                instance.smoothZoom(rect.width / 2, rect.height / 2, 1.25);
+            });
+
+            zoomOutBtn.addEventListener('click', () => {
+                const rect = container.getBoundingClientRect();
+                instance.smoothZoom(rect.width / 2, rect.height / 2, 0.8);
+            });
+
+            resetBtn.addEventListener('click', () => {
+                instance.moveTo(0, 0);
+                instance.zoomAbs(0, 0, 1);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initDiagram);
     </script>
-    <style>
-        body { background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .mermaid-container { overflow-x: auto; background: white; border-radius: 0.75rem; padding: 2.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06); }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
-</head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header Section -->
-        <div class="bg-white p-8 rounded-t-xl shadow-sm border-b border-slate-200">
-            <div class="flex items-center justify-between mb-2">
-                <span class="bg-slate-800 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Architecture Document</span>
-                <span class="text-sm font-medium text-slate-500">API Integration Level</span>
-            </div>
-            <h1 class="text-3xl font-bold text-slate-800 mt-4">Click & Collect: API სინქრონიზაცია & ფლოუ</h1>
-            <p class="text-slate-600 mt-3 text-md max-w-3xl leading-relaxed">
-                დეტალური მიმდევრობის დიაგრამა დეველოპერებისთვის. ასახავს Backend სერვისების, Picker App-ის, eLocker API-სა და 
-                ოვერბუქინგის (Overbooking) პრევენციის შიდა ლოგიკას.
-            </p>
-        </div>
-
-        <!-- Diagram Section -->
-        <div class="mermaid-container border border-slate-200 border-t-0 rounded-b-xl">
-            <div class="mermaid flex justify-center">
-                sequenceDiagram
-                    autonumber
-                    
-                    actor C as 👤 Customer
-                    participant F as 🛒 Shop App
-                    participant B as ⚙️ Backend API
-                    participant DB as 🗄️ Slot Database
-                    participant P as 📱 Picker App
-                    participant V as 🗃️ eLocker API
-                    participant SMS as ✉️ SMS Gateway
-
-                    %% --- ფაზა 1 ---
-                    rect rgb(244, 244, 255)
-                    Note over C, SMS: ეტაპი 1: Checkout & Overbooking Validation
-                    C->>F: ირჩევს ლოკაციას და დროს
-                    F->>B: GET /lockers/availability<br/>(type: clickAndCollect)
-                    B->>DB: Check logic: (Total Free - 2) > 0
-                    B-->>F: Response: [Available Slots Array]
-                    C->>F: ასრულებს გადახდას
-                    F->>B: POST /orders
-                    B->>DB: Reserve Slot (+30 min Buffer)
-                    B-->>F: 201 Created
-                    end
-
-                    %% --- ფაზა 2 ---
-                    rect rgb(255, 252, 235)
-                    Note over C, SMS: ეტაპი 2: Picker App & Vendor API Sync
-                    P->>B: GET /orders/picking
-                    P->>P: ფიზიკური შეგროვება
-                    P->>B: POST /orders/{id}/allocate<br/>Payload: [{type: FRIDGE, count: 1}]
-                    
-                    Note right of B: ბექენდი ითვლის ზუსტ კონფიგურაციას
-                    B->>V: POST /api/orders<br/>(Create Vendor Order w/ Compartments)
-                    V-->>B: 200 OK (Returns Generated PIN)
-                    B-->>P: 200 OK (Allocation Success)
-                    P->>V: ათავსებს ამანათს ლოქერში
-                    end
-
-                    %% --- ფაზა 3 ---
-                    rect rgb(240, 255, 244)
-                    Note over C, SMS: ეტაპი 3: Webhooks & Collection
-                    V->>B: POST /webhook/elocker<br/>Status: Deposited
-                    B->>SMS: POST /send-sms<br/>(Send Order PIN to Customer)
-                    SMS-->>C: SMS: "კოდი: XXXX"
-                    
-                    C->>V: ლოქერში შეჰყავს PIN
-                    V->>V: ამოწმებს და აღებს უჯრებს
-                    V->>B: POST /webhook/elocker<br/>Status: Collected
-                    B->>DB: DB Update: Release Slot (მყისიერად)
-                    B->>B: Order Status -> Completed
-                    end
-
-                    %% --- ფაზა 4 ---
-                    rect rgb(255, 245, 245)
-                    Note over C, SMS: ეტაპი 4: Cron Job / Timeout / No-Show ლოგიკა
-                    loop Background Task (Every X mins)
-                        B->>DB: Query: Expired "Deposited" Orders
-                        
-                        alt Next 30min Slot is FREE
-                            B->>DB: Update: Extend Time (+30 min)
-                            B->>SMS: POST /send-sms<br/>(Reminder & Extended Time)
-                        else Next Slot is RESERVED (Full)
-                            B->>V: POST /api/orders/cancel
-                            B->>B: Order Status -> Service Collect
-                            Note right of B: ფიქერმა უნდა ამოიღოს ამანათი,<br/>რომ სხვამ ისარგებლოს.
-                        end
-                    end
-                    end
-            </div>
-        </div>
-
-        <!-- Technical Notes -->
-        <div class="mt-6 flex flex-col md:flex-row gap-4">
-            <div class="flex-1 bg-white p-5 rounded-lg border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
-                <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wide">API Payload - Allocation</h4>
-                <p class="text-xs text-slate-600 font-mono bg-slate-50 p-2 rounded mt-2 border border-slate-100">
-                    POST /orders/{id}/allocate<br/>
-                    {<br/>
-                    &nbsp;&nbsp;"allocations": [<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;{ "type": "DRY", "count": 1 },<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;{ "type": "FRIDGE", "count": 2 }<br/>
-                    &nbsp;&nbsp;]<br/>
-                    }
-                </p>
-            </div>
-            
-            <div class="flex-1 bg-white p-5 rounded-lg border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-                <h4 class="font-bold text-slate-800 text-sm mb-1 uppercase tracking-wide">Webhook Security</h4>
-                <p class="text-xs text-slate-600 mt-2">
-                    Vendor API-დან წამოსული Webhook-ების ავთენტიფიკაციისთვის, Endpoint <code class="bg-slate-100 px-1 rounded text-red-500">/webhook/elocker</code> 
-                    მკაცრად უნდა ამოწმებდეს IP მისამართს ან იყენებდეს Bearer Token-ს, რომ თავიდან ავიცილოთ ყალბი სტატუსის აფდეითები.
-                </p>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
